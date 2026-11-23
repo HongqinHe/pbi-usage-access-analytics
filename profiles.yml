@@ -1,0 +1,13 @@
+# Local / CI profile: runs on DuckDB so anyone can clone and `dbt build`
+# with no cloud account. See profiles.databricks.example.yml for Databricks.
+pbi_usage_access_analytics:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: target/pbi_usage.duckdb
+      threads: 4
+    ci:
+      type: duckdb
+      path: ":memory:"
+      threads: 4

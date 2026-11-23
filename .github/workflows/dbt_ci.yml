@@ -1,0 +1,45 @@
+name: dbt CI
+
+# Every pull request and every push to main rebuilds the whole project from
+# scratch and runs all data tests. A failing test blocks the merge.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    env:
+      DBT_PROFILES_DIR: .
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dbt
+        run: pip install -r requirements.txt
+
+      - name: Generate mock raw data
+        run: python scripts/generate_mock_data.py
+
+      - name: Check project parses
+        run: dbt parse --target ci
+
+      - name: Build models + run all tests
+        run: dbt build --target ci
+
+      - name: Generate docs (lineage)
+        run: dbt docs generate --target ci
+
+      - name: Upload docs artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbt-docs
+          path: |
+            target/index.html
+            target/manifest.json
+            target/catalog.json

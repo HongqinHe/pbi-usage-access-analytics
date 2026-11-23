@@ -1,0 +1,36 @@
+version: 2
+
+models:
+  - name: int_hr__employee_history
+    description: SCD Type 2 employee history built from daily HR extracts (gaps-and-islands).
+    data_tests:
+      - unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [employee_upn, valid_from]
+    columns:
+      - name: employee_version_key
+        data_tests: [unique, not_null]
+
+  - name: int_pbi__access_holders
+    description: >
+      Permission snapshots expanded to individual users. Groups are expanded
+      with an as-of join to AAD membership (latest AAD snapshot on/before the
+      permission snapshot date).
+    columns:
+      - name: access_holder_key
+        data_tests: [unique, not_null]
+      - name: user_upn
+        data_tests: [not_null]
+
+  - name: int_pbi__activity_routed
+    description: >
+      In-scope events (app workspaces and Usage Metrics datasets removed),
+      each routed to exactly one attribution branch: 'dataset' or 'workspace'.
+    columns:
+      - name: event_key
+        data_tests: [unique, not_null]
+      - name: attribution_level
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [dataset, workspace]

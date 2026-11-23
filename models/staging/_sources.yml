@@ -1,0 +1,33 @@
+version: 2
+
+sources:
+  - name: raw
+    description: >
+      Raw layer: complete, unfiltered data exactly as landed by the Python
+      ingestion job (Power BI Admin REST APIs, Azure AD, HR). No business
+      logic here -- all scoping happens downstream.
+      Locally these are CSV files (see scripts/generate_mock_data.py);
+      on Databricks they would be Delta tables.
+    meta:
+      external_location: "read_csv('data/raw/{name}.csv', header = true, all_varchar = true)"
+    tables:
+      - name: pbi_workspaces
+        description: Current state of all workspaces the service principal is a member of (OVERWRITE).
+      - name: pbi_workspace_apps
+        description: Workspaces that publish a Power BI App. Owned by the separate App-layer pipeline.
+      - name: pbi_semantic_models
+        description: Current state of all semantic models (datasets), including auto-created Usage Metrics models.
+      - name: pbi_access_snapshots
+        description: >
+          Run-stamped permission snapshot appended on every successful pipeline
+          run (APPEND). The accumulation of these snapshots IS the access history.
+          scope_level = 'workspace' rows have a blank dataset_id.
+      - name: pbi_activity_events
+        description: >
+          Power BI Admin Activity Events (APPEND) plus a one-time historical CSV
+          backfill (data_source = 'HISTORICAL_CSV'). Contains duplicates from
+          overlapping re-runs; event_id from the API is NOT reliably unique.
+      - name: aad_group_member_snapshots
+        description: Weekly Azure AD group membership snapshots (maintained by another pipeline).
+      - name: hr_employee_extracts
+        description: Daily full extract of the HR employee master (one row per employee per extract_date).

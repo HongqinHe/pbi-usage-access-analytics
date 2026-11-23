@@ -1,0 +1,39 @@
+name: pbi_usage_access_analytics
+version: "1.0.0"
+config-version: 2
+profile: pbi_usage_access_analytics
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+analysis-paths: ["analyses"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+flags:
+  send_anonymous_usage_stats: false
+
+vars:
+  # Business scope rules live in ONE place (DRY) -- change here, not in SQL.
+  usage_metrics_dataset_pattern: "%usage metrics%"
+  # Rolling windows for the current-state access summary
+  activity_windows_days: [30, 60, 90]
+
+models:
+  pbi_usage_access_analytics:
+    +persist_docs:
+      relation: true
+      columns: true
+    staging:
+      +schema: staging
+      +materialized: view
+    intermediate:
+      +schema: intermediate
+      +materialized: view
+    marts:
+      +schema: marts
+      +materialized: table
+
+tests:
+  pbi_usage_access_analytics:
+    +store_failures: false

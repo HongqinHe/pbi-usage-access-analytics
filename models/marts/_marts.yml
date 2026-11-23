@@ -1,0 +1,95 @@
+version: 2
+
+models:
+  - name: dim_workspaces
+    description: Workspace dimension with scope flags (has_app, is_report_only, is_in_scope).
+    columns:
+      - name: workspace_id
+        data_tests: [unique, not_null]
+
+  - name: dim_semantic_models
+    description: Semantic model dimension with scope flag.
+    columns:
+      - name: dataset_id
+        data_tests: [unique, not_null]
+      - name: workspace_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_workspaces')
+                field: workspace_id
+
+  - name: dim_employees
+    description: >
+      SCD Type 2 employee dimension. Join a fact to the version valid on the
+      fact date: `fact_date between valid_from and coalesce(valid_to, '9999-12-31')`.
+    columns:
+      - name: employee_version_key
+        data_tests: [unique, not_null]
+      - name: is_current
+        description: True for the open-ended current version of each employee.
+
+  - name: fct_activity_events
+    description: >
+      In-scope, deduplicated, routed activity events. Incremental model
+      (delete+insert on event_key with a 3-day lookback) -- re-runs are idempotent.
+    columns:
+      - name: event_key
+        data_tests: [unique, not_null]
+      - name: workspace_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_workspaces')
+                field: workspace_id
+      - name: attributed_dataset_id
+        description: Set only when attribution_level = 'dataset'.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_semantic_models')
+                field: dataset_id
+      - name: operation_category
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [View, Export / Analyze, Copilot, External connection]
+
+  - name: fct_access_usage_daily
+    description: >
+      Date-aware access x usage audit. One row per access holder per covered
+      day, INCLUDING zero-usage rows, using the permission snapshot and the
+      HR department that were true on that day.
+      Use usage_count_deduplicated (or filter is_primary_access_row) when
+      summing usage, to avoid multi-group double counting.
+    data_tests:
+      - unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [activity_date, scope_level, workspace_id, dataset_id, user_upn, group_name]
+    columns:
+      - name: access_usage_key
+        data_tests: [unique, not_null]
+      - name: as_of_snapshot_date
+        description: The permission snapshot used for this day (latest on/before the day; earliest if none).
+        data_tests: [not_null]
+      - name: is_pre_capture_fallback
+        description: True when the day is before snapshots began and the earliest snapshot was used.
+      - name: department_as_of
+        description: Department from the SCD2 HR history on activity_date.
+      - name: usage_count
+        description: Usage for this holder/object/day (0 if none). Repeated across groups.
+      - name: usage_count_deduplicated
+        description: usage_count on the primary row only -- safe to SUM.
+      - name: is_primary_access_row
+        description: Exactly one TRUE row per day x object x user.
+
+  - name: rpt_access_usage_current
+    description: >
+      Current-state access summary from the latest snapshot with 30/60/90-day
+      usage and an adoption status (Active (30d) / Dormant / Never used).
+    columns:
+      - name: adoption_status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [Active (30d), Dormant, Never used]

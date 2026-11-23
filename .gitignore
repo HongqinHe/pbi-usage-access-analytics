@@ -1,0 +1,19 @@
+# dbt
+target/
+dbt_packages/
+logs/
+.user.yml
+
+# generated mock data (recreate with scripts/generate_mock_data.py)
+data/raw/
+
+# local
+.venv/
+__pycache__/
+*.duckdb
+*.duckdb.wal
+.DS_Store
+.env
+
+# personal study notes (not for the public repo)
+docs/learning_guide_zh.md

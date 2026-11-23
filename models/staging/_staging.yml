@@ -1,0 +1,92 @@
+version: 2
+
+models:
+  - name: stg_pbi__workspaces
+    description: One row per workspace the service principal can see.
+    columns:
+      - name: workspace_id
+        data_tests: [unique, not_null]
+
+  - name: stg_pbi__workspace_apps
+    description: Workspaces that publish a Power BI App (App-layer territory, excluded downstream).
+    columns:
+      - name: workspace_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_pbi__workspaces')
+                field: workspace_id
+
+  - name: stg_pbi__semantic_models
+    description: One row per semantic model (dataset), flagged if auto-created Usage Metrics.
+    columns:
+      - name: dataset_id
+        data_tests: [unique, not_null]
+      - name: workspace_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_pbi__workspaces')
+                field: workspace_id
+
+  - name: stg_pbi__access_snapshots
+    description: Cleaned permission snapshots; blank dataset_id normalized to NULL.
+    data_tests:
+      - unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [snapshot_date, workspace_id, dataset_id, scope_level, principal_id]
+    columns:
+      - name: scope_level
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [workspace, dataset]
+      - name: principal_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [User, Group]
+      - name: access_source
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [WorkspaceRole, DatasetDirectAccess]
+
+  - name: stg_pbi__activity_events
+    description: >
+      Cleaned and DEDUPLICATED activity events. Dedup is on the natural key
+      (workspace_id, actor_upn, operation, event_time_utc) -- the API event id
+      is not reliable.
+    data_tests:
+      - unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [workspace_id, actor_upn, operation, event_time_utc]
+    columns:
+      - name: event_key
+        description: Surrogate key = md5 of the natural key.
+        data_tests: [unique, not_null]
+      - name: api_event_id
+        description: The API's own Id. Kept for reference only -- NOT unique, NULL for the CSV backfill.
+      - name: data_source
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [API, HISTORICAL_CSV]
+      - name: actor_upn
+        data_tests: [not_null]
+
+  - name: stg_aad__group_member_snapshots
+    description: Weekly AAD group membership, UPNs lower-cased.
+    data_tests:
+      - unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [snapshot_date, group_id, member_upn]
+
+  - name: stg_hr__employee_extracts
+    description: Daily HR extract, one row per employee per extract_date.
+    data_tests:
+      - unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [extract_date, employee_upn]

@@ -1,0 +1,21 @@
+version: 2
+
+exposures:
+  - name: bi_adoption_governance_report
+    label: BI Adoption & Governance (Power BI)
+    type: dashboard
+    maturity: high
+    description: >
+      Power BI semantic model + report built on the marts: adoption trends,
+      access-vs-usage by department, dormant and never-used access for
+      governance reviews and license clean-up.
+    depends_on:
+      - ref('fct_access_usage_daily')
+      - ref('rpt_access_usage_current')
+      - ref('fct_activity_events')
+      - ref('dim_workspaces')
+      - ref('dim_semantic_models')
+      - ref('dim_employees')
+    owner:
+      name: BI Platform Team
+      email: bi-platform@example.com
